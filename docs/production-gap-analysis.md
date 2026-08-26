@@ -36,6 +36,13 @@ unencrypted. Request an ACM certificate for the real domain, add an
 HTTPS:443 listener forwarding to the same target group, and redirect
 HTTP -> HTTPS on the existing :80 listener.
 
+**Status: explicitly deferred (2026-08-26).** Asked about this directly —
+no domain is available yet, and it's a hard requirement, not a preference:
+ACM cannot issue or validate a certificate against a raw
+`*.elb.amazonaws.com` address. As soon as a domain exists (in Route 53 or
+elsewhere), this becomes: request the cert, add the HTTPS listener, add the
+DNS record, done.
+
 ## Route 53
 
 **Current:** the ALB is reached by its raw `*.elb.amazonaws.com` DNS name.
@@ -53,25 +60,45 @@ internet (`wp-login.php`, XML-RPC abuse, plugin-vulnerability probes). AWS
 WAF with the managed WordPress rule group, plus basic rate-limiting, is cheap
 insurance relative to the blast radius of a compromised admin account.
 
+**Status: explicitly deferred (2026-08-26).** Asked about this directly —
+skipped given the account's limited remaining credit ($27.48) and the
+~$5-10/month baseline WAF adds on top of the NAT Gateway, ALB, and EC2
+instance already running continuously. Revisit once there's more credit
+headroom or real traffic that justifies it.
+
 ## Autoscaling
 
-**Current:** both services are fixed at desired count 1.
+**Current (updated 2026-08-26):** `wordpress-service` now has an ECS
+Application Auto Scaling target (min 1, max 3) with a target-tracking policy
+on `ECSServiceAverageCPUUtilization` at 70%, 60s scale-out / 120s scale-in
+cooldown. `mysql-service` was deliberately left at a fixed desired count of 1
+— it isn't horizontally scalable in this design (that's exactly why it
+shouldn't be MySQL-on-ECS in production either; see the database section
+above).
 
-**Gap:** no response to load, and no resilience if the single task's AZ has
-an issue. Add an ECS Service Auto Scaling target tracking CPU/memory (or ALB
-request count per target) for `wordpress-service`, minimum 2 tasks spread
-across the 2 AZs. `mysql-service` should generally stay at 1 (it's not
-horizontally scalable in this design) — that's exactly why it shouldn't be
-MySQL-on-ECS in production either.
+Kept minimum capacity at 1 rather than the doc's production suggestion of 2 —
+this is a credit-limited staging account, and doubling the always-on Fargate
+baseline cost just to satisfy a number wasn't worth it. The policy will scale
+out under real load regardless; it just doesn't pay for a second task sitting
+idle by default.
+
+**Remaining gap for true production:** minimum capacity of 1 means no
+redundancy at rest — it only helps once load actually appears. For
+production, raise the floor to 2 tasks spread across the 2 AZs so a single
+AZ issue doesn't take the site down before autoscaling even reacts.
 
 ## Multi-AZ resilience
 
-**Current:** desired count 1 for both services means, in practice, "runs in
-whichever AZ ECS happens to place it."
+**Current:** `wordpress-service` can now scale to 3 tasks under load (spread
+across the 2 private subnets/AZs by ECS's default placement strategy), but
+still floors at 1 when idle. `mysql-service` stays fixed at 1 — see the
+database section above for why that's a staging-only tradeoff.
 
-**Gap:** this is really the same gap as autoscaling — desired count 1 means
-zero redundancy by definition. Fixed by the autoscaling change above for
-WordPress; fixed by the Aurora Multi-AZ change for the database.
+**Gap:** at minimum capacity, still "runs in whichever AZ ECS happens to
+place it" for WordPress, and the MySQL single point of failure is unchanged
+regardless of the WordPress-side autoscaling. Raising the WordPress floor to
+2 (see Autoscaling above) and moving MySQL to Aurora Multi-AZ are what
+actually closes this gap.
 
 ## Backup strategy / disaster recovery
 

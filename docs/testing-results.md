@@ -74,3 +74,18 @@ workflow run` / `workflow_dispatch` worked immediately) — this looks like a
 GitHub-side indexing quirk on a just-created repository rather than anything
 in this repo's configuration; worth a plain push once account verification
 clears, just to confirm `on: push` is firing normally by then too.
+
+**Retried 2026-08-26, ~1 hour later:** same result, same error
+(`Not authorized to perform sts:AssumeRoleWithWebIdentity`), confirming this
+is a time-based account hold rather than a transient blip. No further retries
+attempted this session — re-run `gh workflow run deploy.yml -R
+s4ql4ind43m0n/wordpress-ecs` after the account finishes verifying (AWS's own
+message said up to 2 days).
+
+## Additional changes verified this session (redo pass)
+
+| # | Test | Method | Result |
+|---|------|--------|--------|
+| 11 | Autoscaling target and policy registered | `aws application-autoscaling describe-scalable-targets` / `describe-scaling-policies` | **PASS** — min 1 / max 3, target-tracking on 70% CPU utilization, confirmed in AWS's response |
+| 12 | HTTPS/ACM | N/A | **DEFERRED BY DECISION** — no domain available; ACM cannot issue/validate a cert against a raw ALB DNS name, so this is a hard blocker, not an oversight |
+| 13 | WAF | N/A | **DEFERRED BY DECISION** — skipped to avoid adding ~$5-10/month to an account with $27.48 remaining credit |
