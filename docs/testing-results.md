@@ -36,17 +36,41 @@ AWS. This is exactly the class of bug the doc's service-discovery
 recommendation exists to avoid; it's now verified working, and the same
 `DB_HOST=mysql` value carries over unchanged to the ECS task definition.
 
-## AWS-environment tests (pending)
+## AWS-environment tests
 
-These require the live AWS account and are not yet run — see
-[implementation-report.md](implementation-report.md) for current provisioning
-status:
+Run against the real `wordpress-staging-vpc` / `wordpress-cluster` on
+2026-08-26. See [implementation-report.md](implementation-report.md) for the
+full list of what already existed vs. what was fixed or created this session.
 
-- [ ] ALB `/health` reachable from the internet
-- [ ] ALB target group shows targets `HEALTHY`
-- [ ] Full path: Internet -> ALB -> ECS Nginx -> PHP-FPM -> MySQL ECS service
-- [ ] WordPress file persistence after a real ECS task replacement
-- [ ] MySQL persistence after a real ECS task replacement
-- [ ] GitHub Actions: OIDC auth, build, push, new task definition revision, deploy
-- [ ] CloudWatch log groups receiving nginx/php/mysql logs
-- [ ] Rollback to a previous task definition revision
+| # | Test | Method | Result |
+|---|------|--------|--------|
+| 1 | ALB `/health` reachable from the internet | `curl http://<alb-dns>/health` | **PASS** — `HTTP 200`, body `OK` |
+| 2 | ALB target group shows targets `HEALTHY` | `aws elbv2 describe-target-health` | **PASS** |
+| 3 | Full path: Internet -> ALB -> ECS Nginx -> PHP-FPM -> MySQL ECS service | `curl http://<alb-dns>/` | **PASS** — reached the WordPress installer, then a real installed site, entirely through the ALB |
+| 4 | WordPress installation via the live ALB endpoint | POST to `wp-admin/install.php?step=2` | **PASS** — `Success!`, homepage served `<title>WordPress ECS Staging</title>` |
+| 5 | MySQL persistence after a real ECS task replacement | `aws ecs stop-task` on the running mysql task; service replaced it | **PASS** — site still showed the installed title after the new task came up, on the same EFS-backed volume |
+| 6 | WordPress file persistence after a real ECS task replacement | `aws ecs stop-task` on the running wordpress task | **PASS** — new task registered healthy in the target group; homepage and `/health` both fine |
+| 7 | ECS Service Connect (`DB_HOST=mysql`) | Live task env resolves `mysql` via the `wordpress-staging` Cloud Map namespace | **PASS** — no hardcoded IP anywhere; confirmed by test 3/4 succeeding |
+| 8 | CloudWatch log groups receiving nginx/php/mysql logs | `aws logs tail /aws/ecs/wordpress-staging --log-stream-name-prefix ...` | **PASS** — real request/response lines visible for all three containers |
+| 9 | Rollback to a previous task definition revision | Deployed `wordpress-task:3`, confirmed serving, rolled back to `wordpress-task:2` | **PASS** — target went healthy again on the older revision, site unaffected |
+| 10 | GitHub Actions: OIDC auth, build, push, new task definition revision, deploy | Manually dispatched `deploy.yml` (the `on: push` trigger itself did not fire — see note) | **BLOCKED** — see note below |
+
+**Note on test 10:** every AWS-side piece for CI/CD is provisioned and correctly
+configured (OIDC provider, `GitHubActions-ECS-Deploy` role with a trust policy
+scoped to `repo:s4ql4ind43m0n/wordpress-ecs:environment:staging`, least-privilege
+permissions, GitHub `staging` environment with `AWS_ROLE_ARN` secret and all
+required variables). The `Configure AWS credentials` step still fails with
+`Not authorized to perform sts:AssumeRoleWithWebIdentity` even after the trust
+policy was temporarily widened to the whole repository (ruling out a `sub`-claim
+mismatch) and after waiting for OIDC provider propagation. This account showed
+"account verification is in progress... may take up to two days" when CloudShell
+was attempted earlier the same session, and federated `AssumeRoleWithWebIdentity`
+calls from a brand-new OIDC provider are a commonly-gated capability during that
+same hold — the two failures line up. No code or policy change is expected to
+fix this; re-run the workflow (`gh workflow run deploy.yml`) after the account
+finishes verifying. Also worth noting separately: the very first two pushes to
+`main` did not register a workflow run at all via the `on: push` trigger (`gh
+workflow run` / `workflow_dispatch` worked immediately) — this looks like a
+GitHub-side indexing quirk on a just-created repository rather than anything
+in this repo's configuration; worth a plain push once account verification
+clears, just to confirm `on: push` is firing normally by then too.
