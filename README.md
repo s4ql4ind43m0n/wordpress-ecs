@@ -2,6 +2,12 @@
 
 WordPress on AWS ECS Fargate (staging), deployed via GitHub Actions with OIDC.
 
+**New to this project or rebuilding it from scratch?** Start with
+[docs/step-by-step-guide.md](docs/step-by-step-guide.md) — it walks through
+every step in build order with the exact commands used, the real bugs that
+came up, and how to verify each piece actually works before moving to the
+next. Everything in it was run against a real AWS account, not just planned.
+
 ## Architecture
 
 ```
@@ -11,15 +17,17 @@ Internet
   ALB (public subnets, HTTP/HTTPS)
    |
    v
-ECS Fargate Cluster (wordpress-staging)
+ECS Fargate Cluster (wordpress-cluster)
    |
-   +-- wordpress service (private subnets, no public IP)
+   +-- wordpress-service (private subnets, no public IP)
    |     task: nginx (:80) + php-fpm (:9000, localhost)
    |     shared EFS mount -> /var/www/html
+   |     ARM64 (Graviton) - see step-by-step-guide.md phase E for why this matters
    |
-   +-- mysql service (private subnets, no public IP)
+   +-- mysql-service (private subnets, no public IP)
          task: mysql:8.4
          EFS mount -> /var/lib/mysql (staging/testing only, see below)
+         reachable from wordpress-service as "mysql" via ECS Service Connect
 
 GitHub -> OIDC -> IAM role (GitHubActions-ECS-Deploy) -> ECR -> ECS -> CloudWatch
 ```
@@ -68,6 +76,7 @@ one ECS task) and its results.
 
 ## Documentation
 
+- [docs/step-by-step-guide.md](docs/step-by-step-guide.md) — build this from scratch, step by step, with real commands and the bugs to expect
 - [docs/implementation-report.md](docs/implementation-report.md) — what was built, why, and how it was verified
 - [docs/testing-results.md](docs/testing-results.md) — pass/fail evidence for every test
 - [docs/production-gap-analysis.md](docs/production-gap-analysis.md) — staging vs. production-grade design

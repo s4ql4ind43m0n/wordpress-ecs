@@ -107,15 +107,31 @@ no credentials handled directly.
   given the account's limited remaining credit — it adds CloudWatch custom-metric
   cost. Trivial to turn on: `aws ecs update-cluster-settings --cluster
   wordpress-cluster --settings name=containerInsights,value=enhanced`).
-- Autoscaling, HTTPS/ACM, WAF, and the Aurora/RDS migration are staging-to-production
-  gaps, not staging bugs — covered in `docs/production-gap-analysis.md`.
+- ~~Autoscaling~~ — added 2026-08-26: `wordpress-service` now has an
+  Application Auto Scaling target (min 1, max 3, target-tracking on 70% CPU).
+- HTTPS/ACM and WAF are explicitly deferred by decision (no domain available;
+  WAF's ongoing cost not justified yet on this account's remaining credit),
+  not oversights — see `docs/production-gap-analysis.md`. The Aurora/RDS
+  migration remains a staging-to-production gap, also covered there.
 
 ## Evidence
 
-Screenshots were not captured as image files this session — the browser
-automation available couldn't reliably save screenshots to disk for this
-environment (only display them inline). In their place, this report and
-`docs/testing-results.md` rely on command output (JSON from `aws` CLI calls,
-HTTP status codes, CloudWatch log excerpts) as the verification trail, which
-is captured in full in this session's history. The live site was visually
-confirmed in-browser at the ALB DNS name.
+No screenshot image files are committed to this repo — the browser
+automation available in this session has no mechanism to save a screenshot
+to disk (only display it for inline verification), and a direct macOS
+`screencapture` attempt confirmed there's no attached display session to
+capture from either. This is a tool limitation, verified rather than assumed.
+
+What exists instead: a full visual walkthrough of the live AWS console was
+done at the end of the build (VPC, subnets, the `mysql-sg` fix, ECR with a
+real pushed image, both EFS filesystems, the `ecsTaskExecutionRole` IAM fix,
+the ECS cluster showing 2 active services, the `wordpress-service` health
+tab with its ALB target showing 1 healthy, the ALB itself, the NAT Gateway,
+and CloudWatch log streams with real timestamps) plus the live WordPress
+site — all confirmed against the actual running account, described in full
+in this session's record. Anyone with console access to this AWS account can
+reproduce every one of those views from the URLs and resource names in
+`docs/step-by-step-guide.md`. Command output (JSON from `aws` CLI calls, HTTP
+status codes, CloudWatch log excerpts) remains the primary durable evidence
+trail in `docs/testing-results.md`, since it doesn't depend on anyone
+re-opening a console.
