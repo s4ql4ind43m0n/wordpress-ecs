@@ -1,0 +1,58 @@
+{
+  "family": "mysql-staging",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/wordpressTaskRole",
+  "volumes": [
+    {
+      "name": "mysql-data",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "<MYSQL_EFS_FILESYSTEM_ID>",
+        "rootDirectory": "/",
+        "transitEncryption": "ENABLED"
+      }
+    }
+  ],
+  "containerDefinitions": [
+    {
+      "name": "mysql",
+      "image": "mysql:8.4",
+      "essential": true,
+      "cpu": 512,
+      "memory": 1024,
+      "portMappings": [{ "containerPort": 3306, "protocol": "tcp" }],
+      "mountPoints": [
+        { "sourceVolume": "mysql-data", "containerPath": "/var/lib/mysql" }
+      ],
+      "secrets": [
+        {
+          "name": "MYSQL_DATABASE",
+          "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:wordpress/staging/database:database::"
+        },
+        {
+          "name": "MYSQL_USER",
+          "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:wordpress/staging/database:username::"
+        },
+        {
+          "name": "MYSQL_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:wordpress/staging/database:password::"
+        },
+        {
+          "name": "MYSQL_ROOT_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:wordpress/staging/database:root_password::"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/aws/ecs/wordpress-staging",
+          "awslogs-region": "<REGION>",
+          "awslogs-stream-prefix": "wordpress/mysql"
+        }
+      }
+    }
+  ]
+}

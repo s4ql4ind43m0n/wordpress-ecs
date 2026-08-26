@@ -1,0 +1,96 @@
+name: Deploy WordPress
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+  ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image variables
+        run: |
+          echo "REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=${GITHUB_SHA}" >> "$GITHUB_ENV"
+
+      - name: Build PHP image
+        run: |
+          docker build \
+            -t "$REGISTRY/${{ vars.ECR_PHP_REPOSITORY }}:$IMAGE_TAG" \
+            ./php
+
+      - name: Push PHP image
+        run: docker push "$REGISTRY/${{ vars.ECR_PHP_REPOSITORY }}:$IMAGE_TAG"
+
+      - name: Build Nginx image
+        run: |
+          docker build \
+            -t "$REGISTRY/${{ vars.ECR_NGINX_REPOSITORY }}:$IMAGE_TAG" \
+            ./nginx
+
+      - name: Push Nginx image
+        run: docker push "$REGISTRY/${{ vars.ECR_NGINX_REPOSITORY }}:$IMAGE_TAG"
+
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "$ECS_SERVICE" \
+            --query taskDefinition \
+            > task-definition.json
+
+      - name: Render new PHP image into task definition
+        id: render-php
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: php
+          image: ${{ env.REGISTRY }}/${{ vars.ECR_PHP_REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+      - name: Render new Nginx image into task definition
+        id: render-nginx
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-php.outputs.task-definition }}
+          container-name: nginx
+          image: ${{ env.REGISTRY }}/${{ vars.ECR_NGINX_REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+      - name: Deploy new task definition revision
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-nginx.outputs.task-definition }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          service: ${{ env.ECS_SERVICE }}
+          wait-for-service-stability: true
+
+      - name: Health check via ALB
+        run: |
+          curl -f "${{ vars.ALB_HEALTH_URL }}" || exit 1
