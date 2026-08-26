@@ -1,25 +1,28 @@
 {
-  "family": "wordpress-staging",
+  "family": "wordpress-task",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "1024",
   "memory": "2048",
-  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/ecsTaskExecutionRole",
-  "taskRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/wordpressTaskRole",
+  "runtimePlatform": {
+    "cpuArchitecture": "ARM64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "executionRoleArn": "arn:aws:iam::536055837898:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::536055837898:role/wordpressTaskRole",
   "volumes": [
     {
       "name": "wordpress-files",
       "efsVolumeConfiguration": {
-        "fileSystemId": "<WORDPRESS_EFS_FILESYSTEM_ID>",
-        "rootDirectory": "/",
-        "transitEncryption": "ENABLED"
+        "fileSystemId": "fs-0dd18ad5b2095906f",
+        "rootDirectory": "/"
       }
     }
   ],
   "containerDefinitions": [
     {
       "name": "nginx",
-      "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/wordpress-nginx:<IMAGE_TAG>",
+      "image": "536055837898.dkr.ecr.us-east-1.amazonaws.com/wordpress-nginx:<IMAGE_TAG>",
       "essential": true,
       "cpu": 256,
       "memory": 256,
@@ -39,14 +42,14 @@
         "logDriver": "awslogs",
         "options": {
           "awslogs-group": "/aws/ecs/wordpress-staging",
-          "awslogs-region": "<REGION>",
+          "awslogs-region": "us-east-1",
           "awslogs-stream-prefix": "wordpress/nginx"
         }
       }
     },
     {
       "name": "php",
-      "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/wordpress-php:<IMAGE_TAG>",
+      "image": "536055837898.dkr.ecr.us-east-1.amazonaws.com/wordpress-php:<IMAGE_TAG>",
       "essential": true,
       "cpu": 768,
       "memory": 1536,
@@ -61,18 +64,18 @@
       "secrets": [
         {
           "name": "DB_USER",
-          "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:wordpress/staging/database:username::"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:536055837898:secret:wordpress/staging/database-2RcAMl:username::"
         },
         {
           "name": "DB_PASSWORD",
-          "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:wordpress/staging/database:password::"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:536055837898:secret:wordpress/staging/database-2RcAMl:password::"
         }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
           "awslogs-group": "/aws/ecs/wordpress-staging",
-          "awslogs-region": "<REGION>",
+          "awslogs-region": "us-east-1",
           "awslogs-stream-prefix": "wordpress/php"
         }
       }

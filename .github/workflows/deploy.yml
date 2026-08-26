@@ -13,6 +13,7 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION }}
   ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
   ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+  ECS_TASK_FAMILY: ${{ vars.ECS_TASK_FAMILY }}
 
 jobs:
   deploy:
@@ -42,28 +43,35 @@ jobs:
           echo "REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> "$GITHUB_ENV"
           echo "IMAGE_TAG=${GITHUB_SHA}" >> "$GITHUB_ENV"
 
-      - name: Build PHP image
-        run: |
-          docker build \
-            -t "$REGISTRY/${{ vars.ECR_PHP_REPOSITORY }}:$IMAGE_TAG" \
-            ./php
+      # The ECS task runs on Fargate ARM64 (Graviton, ~20% cheaper than x86_64),
+      # but this runner is amd64 - cross-build for arm64 so the pushed image
+      # actually matches what Fargate will try to pull.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-      - name: Push PHP image
-        run: docker push "$REGISTRY/${{ vars.ECR_PHP_REPOSITORY }}:$IMAGE_TAG"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Build Nginx image
-        run: |
-          docker build \
-            -t "$REGISTRY/${{ vars.ECR_NGINX_REPOSITORY }}:$IMAGE_TAG" \
-            ./nginx
+      - name: Build and push PHP image (arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./php
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ vars.ECR_PHP_REPOSITORY }}:${{ env.IMAGE_TAG }}
 
-      - name: Push Nginx image
-        run: docker push "$REGISTRY/${{ vars.ECR_NGINX_REPOSITORY }}:$IMAGE_TAG"
+      - name: Build and push Nginx image (arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./nginx
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ vars.ECR_NGINX_REPOSITORY }}:${{ env.IMAGE_TAG }}
 
       - name: Download current task definition
         run: |
           aws ecs describe-task-definition \
-            --task-definition "$ECS_SERVICE" \
+            --task-definition "$ECS_TASK_FAMILY" \
             --query taskDefinition \
             > task-definition.json
 
