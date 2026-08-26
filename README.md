@@ -2,6 +2,11 @@
 
 WordPress on AWS ECS Fargate (staging), deployed via GitHub Actions with OIDC.
 
+**Live staging site:** http://wordpress-alb-1569660740.us-east-1.elb.amazonaws.com
+(HTTP only — see [production-gap-analysis.md](docs/production-gap-analysis.md)
+for why HTTPS isn't there yet). Health check:
+http://wordpress-alb-1569660740.us-east-1.elb.amazonaws.com/health
+
 **New to this project or rebuilding it from scratch?** Start with
 [docs/step-by-step-guide.md](docs/step-by-step-guide.md) — it walks through
 every step in build order with the exact commands used, the real bugs that
