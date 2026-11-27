@@ -2,10 +2,11 @@
 
 WordPress on AWS ECS Fargate (staging), deployed via GitHub Actions with OIDC.
 
-**Live staging site:** http://wordpress-alb-1569660740.us-east-1.elb.amazonaws.com
-(HTTP only — see [production-gap-analysis.md](docs/production-gap-analysis.md)
-for why HTTPS isn't there yet). Health check:
-http://wordpress-alb-1569660740.us-east-1.elb.amazonaws.com/health
+**Staging deployment:** built and verified on AWS in August 2026 (see
+[testing-results.md](docs/testing-results.md)). It served HTTP only; see
+[production-gap-analysis.md](docs/production-gap-analysis.md) for why HTTPS
+wasn't added. Account-specific values (account ID, load-balancer DNS name,
+EFS IDs, secret suffixes) are shown as `<PLACEHOLDERS>` in this public repo.
 
 **New to this project or rebuilding it from scratch?** Start with
 [docs/step-by-step-guide.md](docs/step-by-step-guide.md) — it walks through

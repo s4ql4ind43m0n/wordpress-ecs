@@ -4,7 +4,7 @@ This walks through all 30 steps of the original design in build order. Every
 command here was actually run against a real AWS account during this
 project's build — this isn't a plan, it's a record of what worked, with the
 bugs that came up along the way and how they were fixed. Replace
-`536055837898` / `us-east-1` / `s4ql4ind43m0n/wordpress-ecs` with your own
+`<AWS_ACCOUNT_ID>` / `us-east-1` / `s4ql4ind43m0n/wordpress-ecs` with your own
 account ID, region, and repo.
 
 Each step says **what** to do, **why it matters**, and **how to know it

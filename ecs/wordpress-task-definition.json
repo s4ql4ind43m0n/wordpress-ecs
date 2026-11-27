@@ -8,13 +8,13 @@
     "cpuArchitecture": "ARM64",
     "operatingSystemFamily": "LINUX"
   },
-  "executionRoleArn": "arn:aws:iam::536055837898:role/ecsTaskExecutionRole",
-  "taskRoleArn": "arn:aws:iam::536055837898:role/wordpressTaskRole",
+  "executionRoleArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/wordpressTaskRole",
   "volumes": [
     {
       "name": "wordpress-files",
       "efsVolumeConfiguration": {
-        "fileSystemId": "fs-0dd18ad5b2095906f",
+        "fileSystemId": "fs-<WORDPRESS_EFS_ID>",
         "rootDirectory": "/"
       }
     }
@@ -22,7 +22,7 @@
   "containerDefinitions": [
     {
       "name": "nginx",
-      "image": "536055837898.dkr.ecr.us-east-1.amazonaws.com/wordpress-nginx:<IMAGE_TAG>",
+      "image": "<AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/wordpress-nginx:<IMAGE_TAG>",
       "essential": true,
       "cpu": 256,
       "memory": 256,
@@ -49,7 +49,7 @@
     },
     {
       "name": "php",
-      "image": "536055837898.dkr.ecr.us-east-1.amazonaws.com/wordpress-php:<IMAGE_TAG>",
+      "image": "<AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/wordpress-php:<IMAGE_TAG>",
       "essential": true,
       "cpu": 768,
       "memory": 1536,
@@ -64,11 +64,11 @@
       "secrets": [
         {
           "name": "DB_USER",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:536055837898:secret:wordpress/staging/database-2RcAMl:username::"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:<AWS_ACCOUNT_ID>:secret:wordpress/staging/database-<SECRET_SUFFIX>:username::"
         },
         {
           "name": "DB_PASSWORD",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:536055837898:secret:wordpress/staging/database-2RcAMl:password::"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:<AWS_ACCOUNT_ID>:secret:wordpress/staging/database-<SECRET_SUFFIX>:password::"
         }
       ],
       "logConfiguration": {

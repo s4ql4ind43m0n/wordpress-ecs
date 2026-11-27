@@ -4,12 +4,12 @@
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "1024",
   "memory": "3072",
-  "executionRoleArn": "arn:aws:iam::536055837898:role/ecsTaskExecutionRole",
+  "executionRoleArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/ecsTaskExecutionRole",
   "volumes": [
     {
       "name": "mysql-data",
       "efsVolumeConfiguration": {
-        "fileSystemId": "fs-00e4f9ed43372a06d",
+        "fileSystemId": "fs-<MYSQL_EFS_ID>",
         "rootDirectory": "/"
       }
     }
@@ -26,10 +26,10 @@
         { "sourceVolume": "mysql-data", "containerPath": "/var/lib/mysql", "readOnly": false }
       ],
       "secrets": [
-        { "name": "MYSQL_USER", "valueFrom": "arn:aws:secretsmanager:us-east-1:536055837898:secret:wordpress/staging/database-2RcAMl:username::" },
-        { "name": "MYSQL_PASSWORD", "valueFrom": "arn:aws:secretsmanager:us-east-1:536055837898:secret:wordpress/staging/database-2RcAMl:password::" },
-        { "name": "MYSQL_DATABASE", "valueFrom": "arn:aws:secretsmanager:us-east-1:536055837898:secret:wordpress/staging/database-2RcAMl:database::" },
-        { "name": "MYSQL_ROOT_PASSWORD", "valueFrom": "arn:aws:secretsmanager:us-east-1:536055837898:secret:wordpress/staging/database-2RcAMl:root_password::" }
+        { "name": "MYSQL_USER", "valueFrom": "arn:aws:secretsmanager:us-east-1:<AWS_ACCOUNT_ID>:secret:wordpress/staging/database-<SECRET_SUFFIX>:username::" },
+        { "name": "MYSQL_PASSWORD", "valueFrom": "arn:aws:secretsmanager:us-east-1:<AWS_ACCOUNT_ID>:secret:wordpress/staging/database-<SECRET_SUFFIX>:password::" },
+        { "name": "MYSQL_DATABASE", "valueFrom": "arn:aws:secretsmanager:us-east-1:<AWS_ACCOUNT_ID>:secret:wordpress/staging/database-<SECRET_SUFFIX>:database::" },
+        { "name": "MYSQL_ROOT_PASSWORD", "valueFrom": "arn:aws:secretsmanager:us-east-1:<AWS_ACCOUNT_ID>:secret:wordpress/staging/database-<SECRET_SUFFIX>:root_password::" }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
