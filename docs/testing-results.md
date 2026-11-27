@@ -4,8 +4,8 @@ Each test records what was checked, how, and the actual result observed during
 this build. Local tests were run before anything was deployed to AWS, per the
 "prove it manually before automating it" approach in the source design doc.
 
-Live staging URL (the `<alb-dns>` referenced throughout this file):
-http://wordpress-alb-1569660740.us-east-1.elb.amazonaws.com
+Staging URL (the `<alb-dns>` referenced throughout this file): the ALB DNS
+name, not published in this public repo.
 
 ## Local container tests (pre-AWS)
 

@@ -1,7 +1,7 @@
 # Runbook
 
 Operating `wordpress-cluster` in `wordpress-staging-vpc` (account
-`536055837898`, region `us-east-1`).
+`<AWS_ACCOUNT_ID>`, region `us-east-1`).
 
 ## Key resource names
 
@@ -15,8 +15,8 @@ Operating `wordpress-cluster` in `wordpress-staging-vpc` (account
 | Log group | `/aws/ecs/wordpress-staging` (streams: `wordpress/nginx`, `wordpress/php`, `wordpress/mysql`) |
 | DB secret | `wordpress/staging/database` in Secrets Manager |
 | Service discovery | Cloud Map namespace `wordpress-staging`; WordPress reaches MySQL at `mysql` |
-| WordPress EFS | `wordpress-efs` (`fs-0dd18ad5b2095906f`), mounted at `/var/www/html` |
-| MySQL EFS | `mysql-efs` (`fs-00e4f9ed43372a06d`), mounted at `/var/lib/mysql` |
+| WordPress EFS | `wordpress-efs` (`fs-<WORDPRESS_EFS_ID>`), mounted at `/var/www/html` |
+| MySQL EFS | `mysql-efs` (`fs-<MYSQL_EFS_ID>`), mounted at `/var/lib/mysql` |
 
 ## Deploying a change
 
@@ -136,7 +136,7 @@ the running architecture — WordPress and MySQL both run as ECS tasks, not on
 this box. Confirm nothing else depends on it, then:
 
 ```bash
-aws ec2 stop-instances --instance-ids i-08997af3acf4975f0 --region us-east-1
+aws ec2 stop-instances --instance-ids i-<INSTANCE_ID> --region us-east-1
 ```
 
 (Stop, not terminate, in case it's needed again for EFS file management —

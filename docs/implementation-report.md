@@ -1,7 +1,7 @@
 # Implementation Report
 
 Staging environment: WordPress on ECS Fargate, `wordpress-cluster` /
-`wordpress-staging-vpc`, AWS account `536055837898`, region `us-east-1`.
+`wordpress-staging-vpc`, AWS account `<AWS_ACCOUNT_ID>`, region `us-east-1`.
 Session date: 2026-08-26.
 
 This was not a build-from-empty. A prior session had already created a
@@ -14,7 +14,7 @@ already existed, what was broken, and what was newly created.
 |---|---|---|---|---|
 | VPC (10.0.0.0/16) | `wordpress-staging-vpc` | COMPLETE | COMPLETE | None — verified CIDR and reused |
 | Public/private subnets (2 AZ) | `wordpress-public-a/b`, `wordpress-private-a/b` | COMPLETE | COMPLETE | None |
-| Internet Gateway | `igw-00b9b368a04731941` | COMPLETE | COMPLETE | None |
+| Internet Gateway | `igw-<IGW_ID>` | COMPLETE | COMPLETE | None |
 | NAT Gateway | `wordpress-staging-nat` (regional/dual-AZ mode) | COMPLETE | COMPLETE | None — see cost note below |
 | Route tables | `wordpress-public-rt`, `wordpress-private-rt` | COMPLETE | COMPLETE | None |
 | ALB security group | `wordpress-alb-sg` | COMPLETE | COMPLETE | None |
@@ -22,8 +22,8 @@ already existed, what was broken, and what was newly created.
 | MySQL security group | `mysql-sg` | **MISCONFIGURED** | COMPLETE | Added ingress: TCP 3306 from `wordpress-ec2-sg` (was completely empty — blocked everything) |
 | EFS security group | `wordpress-efs-sg` | **MISCONFIGURED** | COMPLETE | Added ingress: TCP 2049 from `wordpress-ec2-sg` (previously only allowed `mysql-sg`, which would have blocked WordPress tasks from ever mounting `/var/www/html`) |
 | ECR repositories | `wordpress-nginx`, `wordpress-php` | PARTIAL | COMPLETE | Enabled scan-on-push; added a lifecycle policy (expire untagged after 7 days, keep last 10 overall); pushed real SHA-tagged images |
-| EFS: WordPress files | `wordpress-efs` (`fs-0dd18ad5b2095906f`) | COMPLETE but empty | COMPLETE and initialized | Mounted via the existing `wordpress-ec2-instance` over SSM, copied WordPress core (from wordpress.org), wrote `wp-config.php` (reads DB creds from env vars, no secrets embedded), set ownership to uid/gid 33 |
-| EFS: MySQL data | `mysql-efs` (`fs-00e4f9ed43372a06d`) | COMPLETE | COMPLETE | None — MySQL initializes its own datadir on first boot |
+| EFS: WordPress files | `wordpress-efs` (`fs-<WORDPRESS_EFS_ID>`) | COMPLETE but empty | COMPLETE and initialized | Mounted via the existing `wordpress-ec2-instance` over SSM, copied WordPress core (from wordpress.org), wrote `wp-config.php` (reads DB creds from env vars, no secrets embedded), set ownership to uid/gid 33 |
+| EFS: MySQL data | `mysql-efs` (`fs-<MYSQL_EFS_ID>`) | COMPLETE | COMPLETE | None — MySQL initializes its own datadir on first boot |
 | Secrets Manager | `wordpress/staging/database` | COMPLETE | COMPLETE | Reused as-is (username/password/database/root_password keys, matching spec) |
 | IAM: `ecsTaskExecutionRole` | exists | **MISCONFIGURED** | COMPLETE | Added scoped inline policy granting `secretsmanager:GetSecretValue` on the DB secret only — this was the reason `mysql-service` had never once started successfully |
 | IAM: `wordpressTaskRole` | exists | COMPLETE | COMPLETE | None — correctly empty (no runtime AWS calls needed yet) |
