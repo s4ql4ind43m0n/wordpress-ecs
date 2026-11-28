@@ -15,6 +15,62 @@ next. Everything in it was run against a real AWS account, not just planned.
 
 ## Architecture
 
+```mermaid
+flowchart TB
+    user(["Visitor"])
+
+    subgraph AWS["AWS account · us-east-1"]
+        subgraph VPC["VPC wordpress-staging-vpc"]
+            subgraph PUB["Public subnets"]
+                alb["Application Load Balancer<br/>HTTP :80 · target group wordpress-tg<br/>health check /health"]
+                nat["NAT Gateway"]
+            end
+            subgraph PRIV["Private subnets · no public IPs"]
+                subgraph CLUSTER["ECS Fargate cluster wordpress-cluster · ARM64 (Graviton)"]
+                    subgraph WPS["wordpress-service · auto scaling 1 to 3 tasks at 70% CPU"]
+                        nginx["nginx :80<br/>static files, /health"]
+                        php["php-fpm :9000<br/>WordPress runtime"]
+                    end
+                    subgraph MYS["mysql-service · Service Connect name mysql"]
+                        mysql["mysql:8.4 :3306<br/>staging only"]
+                    end
+                end
+            end
+            efs[("Amazon EFS<br/>/var/www/html · /var/lib/mysql")]
+        end
+        sm["Secrets Manager<br/>wordpress/staging/database"]
+        ecr["Amazon ECR<br/>php and nginx images, tagged by commit SHA"]
+        cw["CloudWatch Logs<br/>/aws/ecs/wordpress-staging"]
+    end
+
+    subgraph GH["GitHub"]
+        repo["Push to main or manual dispatch"]
+        gha["Actions workflow deploy.yml<br/>environment: staging"]
+    end
+
+    user -->|HTTP| alb
+    alb --> nginx
+    nginx -->|"FastCGI over localhost"| php
+    php -->|"MySQL via Service Connect"| mysql
+    php --- efs
+    nginx --- efs
+    mysql --- efs
+    sm -.->|"DB credentials injected at task start"| php
+    WPS -.->|container logs| cw
+    MYS -.->|container logs| cw
+    PRIV -.->|"outbound: ECR pulls, AWS APIs"| nat
+
+    repo --> gha
+    gha -->|"OIDC: AssumeRoleWithWebIdentity<br/>role GitHubActions-ECS-Deploy, no stored keys"| ecr
+    gha -->|"register task definition revision,<br/>update service, wait for stability"| WPS
+    ecr -.->|image pull| WPS
+```
+
+Solid arrows are request and deployment paths; dotted arrows are supporting flows. The load balancer serves HTTP only, and MySQL on EFS is a staging shortcut; both are covered in [docs/production-gap-analysis.md](docs/production-gap-analysis.md). Account-specific identifiers are left out of the diagram.
+
+<details>
+<summary>Plain-text version</summary>
+
 ```
 Internet
    |
@@ -36,6 +92,8 @@ ECS Fargate Cluster (wordpress-cluster)
 
 GitHub -> OIDC -> IAM role (GitHubActions-ECS-Deploy) -> ECR -> ECS -> CloudWatch
 ```
+
+</details>
 
 **Database note:** MySQL runs as its own ECS service on EFS for this staging/testing
 environment only. That is a deliberate lab shortcut, not the production recommendation.
